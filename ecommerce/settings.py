@@ -178,8 +178,13 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-# api key
-# ac116ff478a21d3d
 
-# secret key
-# OGE0NTA4M2MwM2U0MGFkMzFjZDRiNjczOWVlNTcyZTUyN2Q4YTU0MzExNDllODc2OTdjMDZjNWNhMTM4NjUyZg==
+from decouple import config # type: ignore
+
+BEEM_APP_KEY = config("BEEM_APP_KEY")
+BEEM_SECRET_KEY = config("BEEM_SECRET_KEY")
+BEEM_SENDER_ID = config("BEEM_SENDER_ID")
+
+
+
+AUTH_USER_MODEL = 'myapp.CustomUser'

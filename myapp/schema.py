@@ -10,7 +10,6 @@ class Query(graphene.ObjectType):
 class Mutation(graphene.ObjectType):
     register_user = RegistrationMutation.Field()
     login_user = LoginUser.Field()
-    request_otp = RequestOTP.Field()
-    verify_otp = VerifyOTP.Field()
+    login_custmer = OTPLoginMutation.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

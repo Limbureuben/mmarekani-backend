@@ -8,6 +8,9 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.exceptions import ValidationError
 from commerceBuilders.commerceBuilder import UserBuilder
+import requests
+from django.conf import settings
+from .models import CustomUser
 
 
 
@@ -26,7 +29,7 @@ class RegistrationMutation(graphene.Mutation):
 
 class UserType(DjangoObjectType):
     class Meta:
-        model = User
+        model = CustomUser
         fields = ("id", "username", "is_staff", "is_superuser")
 
 
@@ -46,7 +49,7 @@ class LoginUser(graphene.Mutation):
             if user is None:
                 return LoginUser(success=False, message="Invalid credentials")
             
-            if not isinstance(user, User):
+            if not isinstance(user, CustomUser):
                 raise ValidationError("User is not a valid CustomUser instance.")
 
             # Create JWT token
@@ -71,85 +74,49 @@ class LoginUser(graphene.Mutation):
 
 
 
-
-
-
-
-## OTP AUTHENTICATION
-import requests # type: ignore
-
-
-class RequestOTP(graphene.Mutation):
-    pin_id = graphene.String()
+class OTPLoginMutation(graphene.Mutation):
+    user = graphene.Field(UserLoginObject)
     success = graphene.Boolean()
     message = graphene.String()
 
     class Arguments:
         phone = graphene.String(required=True)
-
-    def mutate(self, info, phone):
-        headers = {
-            "Authorization": "Basic YOUR_BASE64_KEY",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "appId": "YOUR_APP_ID",  # optional depending on your config
-            "msisdn": phone,
-            "senderId": "BeemOTP",
-            "channel": "sms"  # or "ussd", "email"
-        }
-
-        try:
-            response = requests.post(
-                "https://otp.beem.africa/v1/request", json=payload, headers=headers
-            )
-            data = response.json()
-
-            if response.status_code == 200 and data.get("pinId"):
-                return RequestOTP(
-                    pin_id=data["pinId"],
-                    success=True,
-                    message="OTP sent successfully"
-                )
-            else:
-                return RequestOTP(success=False, message=data.get("message", "Failed to send OTP"))
-        except Exception as e:
-            return RequestOTP(success=False, message=str(e))
-
-
-
-
-
-# Verify OTP via Beem (Step 7–9)
-class VerifyOTP(graphene.Mutation):
-    verified = graphene.Boolean()
-    message = graphene.String()
-
-    class Arguments:
         pin_id = graphene.String(required=True)
         pin = graphene.String(required=True)
 
-    def mutate(self, info, pin_id, pin):
-        headers = {
-            "Authorization": "Basic YOUR_BASE64_KEY",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "pinId": pin_id,
-            "pin": pin
-        }
-
+    def mutate(self, info, phone, pin_id, pin):
         try:
-            response = requests.post(
-                "https://otp.beem.africa/v1/verify", json=payload, headers=headers
-            )
-            data = response.json()
+            # Step 1: Verify OTP with Beem
+            url = "https://gateway.beem.africa/v1/otp/verify"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Basic {settings.BEEM_APP_KEY}:{settings.BEEM_SECRET_KEY}"
+            }
+            payload = {"pinId": pin_id, "pin": pin}
+            res = requests.post(url, json=payload, headers=headers)
 
-            if response.status_code == 200 and data.get("verified"):
-                return VerifyOTP(verified=True, message="OTP verified successfully")
-            else:
-                return VerifyOTP(verified=False, message=data.get("message", "Verification failed"))
+            if res.status_code != 200 or not res.json().get("valid"):
+                return OTPLoginMutation(success=False, message="Invalid OTP or verification failed.")
+
+            # Step 2: Check or create user
+            user, created = CustomUser.objects.get_or_create(username=phone, defaults={"phone": phone})
+
+            # Step 3: Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+
+            user_data = UserLoginObject(
+                id=user.id,
+                username=user.username,
+                token=access_token,
+                isStaff=user.is_staff,
+            )
+
+            return OTPLoginMutation(user=user_data, success=True, message="Login successful")
+
         except Exception as e:
-            return VerifyOTP(verified=False, message=str(e))
+            return OTPLoginMutation(success=False, message=f"Error: {str(e)}")
+
+
+
+
