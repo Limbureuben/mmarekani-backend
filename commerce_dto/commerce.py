@@ -33,8 +33,8 @@ class UserLoginObject(graphene.ObjectType):
 
 
 class RegistrationInputObject(graphene.InputObjectType):
-    full_name = graphene.String(required=True)
-    phone_number = graphene.String(required=True)
+    username = graphene.String(required=True)
+    phone = graphene.String(required=True)
     national_id = graphene.String(required=True)
 
 class RegistrationResponse(graphene.ObjectType):

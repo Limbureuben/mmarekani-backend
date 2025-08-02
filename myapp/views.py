@@ -11,6 +11,8 @@ from commerceBuilders.commerceBuilder import UserBuilder
 import requests
 from django.conf import settings
 from .models import CustomUser
+from graphene import Mutation, String, Boolean, Field
+import base64
 
 
 
@@ -86,7 +88,7 @@ class RegistrationMutation(graphene.Mutation):
         if CustomUser.objects.filter(username=input.username).exists():
             return RegistrationMutation(success=False, message="Username already registered")
         # Validate if phone or national id already exists
-        if CustomUser.objects.filter(phone_number=input.phone_number).exists():
+        if CustomUser.objects.filter(phone=input.phone).exists():
             return RegistrationMutation(success=False, message="Phone number already registered")
         if CustomUser.objects.filter(national_id=input.national_id).exists():
             return RegistrationMutation(success=False, message="National ID already registered")
@@ -94,7 +96,7 @@ class RegistrationMutation(graphene.Mutation):
         # Create user without password (OTP login)
         user = CustomUser(
             username=input.username,  # or generate a unique username
-            phone_number=input.phone_number,
+            phone=input.phone,
             national_id=input.national_id,
         )
         user.set_unusable_password()  # no password, only OTP login
@@ -108,34 +110,40 @@ class RegistrationMutation(graphene.Mutation):
 
 
 
-class OTPLoginMutation(graphene.Mutation):
-    user = graphene.Field(UserLoginObject)
-    success = graphene.Boolean()
-    message = graphene.String()
+class OTPLoginMutation(Mutation):
+    user = Field(UserLoginObject)
+    success = Boolean()
+    message = String()
 
     class Arguments:
-        phone = graphene.String(required=True)
-        pin_id = graphene.String(required=True)
-        pin = graphene.String(required=True)
+        phone = String(required=True)
+        pin_id = String(required=True)
+        pin = String(required=True)
 
     def mutate(self, info, phone, pin_id, pin):
         try:
-            # Step 1: Verify OTP with Beem
-            url = "https://gateway.beem.africa/v1/otp/verify"
+            # Verify OTP with Beem
+            credentials = f"{settings.BEEM_APP_KEY}:{settings.BEEM_SECRET_KEY}"
+            encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Basic {settings.BEEM_APP_KEY}:{settings.BEEM_SECRET_KEY}"
+                "Authorization": f"Basic {encoded_credentials}",
             }
+
             payload = {"pinId": pin_id, "pin": pin}
-            res = requests.post(url, json=payload, headers=headers)
+            res = requests.post("https://gateway.beem.africa/v1/otp/verify", json=payload, headers=headers)
 
             if res.status_code != 200 or not res.json().get("valid"):
                 return OTPLoginMutation(success=False, message="Invalid OTP or verification failed.")
 
-            # Step 2: Check or create user
-            user, created = CustomUser.objects.get_or_create(username=phone, defaults={"phone": phone})
+            # Lookup user
+            try:
+                user = CustomUser.objects.get(phone=phone)
+            except CustomUser.DoesNotExist:
+                return OTPLoginMutation(success=False, message="User not found. Please register.")
 
-            # Step 3: Generate JWT tokens
+            # Generate token
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
 

@@ -132,9 +132,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+# REST_FRAMEWORK = {
+#     'DEFAULT_AUTHENTICATION_CLASSES': (
+#         'rest_framework_simplejwt.authentication.JWTAuthentication',
+#     ),
+# }
+
+
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.AllowAny",
     ),
 }
 
@@ -178,13 +188,14 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+from dotenv import load_dotenv # type: ignore
+load_dotenv()
 
-from decouple import config # type: ignore
+import os
 
-BEEM_APP_KEY = config("BEEM_APP_KEY")
-BEEM_SECRET_KEY = config("BEEM_SECRET_KEY")
-BEEM_SENDER_ID = config("BEEM_SENDER_ID")
-
-
+BEEM_API_KEY = os.getenv('BEEM_API_KEY')
+BEEM_SECRET_KEY = os.getenv('BEEM_SECRET_KEY')
+BEEM_APP_ID = os.getenv('BEEM_APP_ID')
+BEEM_SENDER_ID = os.getenv('BEEM_SENDER_ID')  # optional
 
 AUTH_USER_MODEL = 'myapp.CustomUser'

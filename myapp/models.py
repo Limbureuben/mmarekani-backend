@@ -4,9 +4,20 @@ from datetime import timedelta
 from django.contrib.auth.models import AbstractUser
 
 
+# class CustomUser(AbstractUser):
+#     phone = models.CharField(max_length=20, unique=True)
+#     national_id = models.CharField(max_length=50, unique=True)
+
+#     def __str__(self):
+#         return f"{self.username} ({self.phone})"
+
+
 class CustomUser(AbstractUser):
-    phone = models.CharField(max_length=20, unique=True)
-    national_id = models.CharField(max_length=50, unique=True)
+    phone = models.CharField(max_length=15, unique=True)
+    national_id = models.CharField(max_length=20, unique=True)
+
+    USERNAME_FIELD = 'phone'
+    REQUIRED_FIELDS = ['username']  # or whatever field you want to collect
 
     def __str__(self):
-        return f"{self.username} ({self.phone})"
+        return self.phone
