@@ -1,10 +1,10 @@
 import graphene
 
-class RegistrationInputObject(graphene.InputObjectType):
-    username = graphene.String()
-    email = graphene.String(required=False)
-    password = graphene.String()
-    passwordConfirm = graphene.String()
+# class RegistrationInputObject(graphene.InputObjectType):
+#     username = graphene.String()
+#     email = graphene.String(required=False)
+#     password = graphene.String()
+#     passwordConfirm = graphene.String()
     
     
 class RegistrationObject(graphene.ObjectType):
@@ -28,3 +28,17 @@ class UserLoginObject(graphene.ObjectType):
     username = graphene.String()
     token = graphene.String()
     isStaff = graphene.Boolean()
+
+
+
+
+class RegistrationInputObject(graphene.InputObjectType):
+    full_name = graphene.String(required=True)
+    phone_number = graphene.String(required=True)
+    national_id = graphene.String(required=True)
+
+class RegistrationResponse(graphene.ObjectType):
+    id = graphene.ID()
+    full_name = graphene.String()
+    phone_number = graphene.String()
+    national_id = graphene.String()

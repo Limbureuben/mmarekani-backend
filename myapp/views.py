@@ -15,22 +15,22 @@ from .models import CustomUser
 
 
 # Create your views here.
-class RegistrationMutation(graphene.Mutation):
-    user = graphene.Field(RegistrationObject)
-    output = graphene.Field(RegistrationResponse)
+# class RegistrationMutation(graphene.Mutation):
+#     user = graphene.Field(RegistrationObject)
+#     output = graphene.Field(RegistrationResponse)
 
-    class Arguments:
-        input = RegistrationInputObject(required=True)
+#     class Arguments:
+#         input = RegistrationInputObject(required=True)
 
-    def mutate(self, info, input):
-        response = UserBuilder.register_user(input)
-        return RegistrationMutation(user=response.user, output=response)
+#     def mutate(self, info, input):
+#         response = UserBuilder.register_user(input)
+#         return RegistrationMutation(user=response.user, output=response)
 
 
-class UserType(DjangoObjectType):
-    class Meta:
-        model = CustomUser
-        fields = ("id", "username", "is_staff", "is_superuser")
+# class UserType(DjangoObjectType):
+#     class Meta:
+#         model = CustomUser
+#         fields = ("id", "username", "is_staff", "is_superuser")
 
 
 class LoginUser(graphene.Mutation):
@@ -71,6 +71,40 @@ class LoginUser(graphene.Mutation):
         except Exception as e:
             return LoginUser(success=False, message=f"An error occurred: {str(e)}")
 
+
+
+
+class RegistrationMutation(graphene.Mutation):
+    user = graphene.Field(RegistrationResponse)
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    class Arguments:
+        input = RegistrationInputObject(required=True)
+
+    def mutate(self, info, input):
+        if CustomUser.objects.filter(username=input.username).exists():
+            return RegistrationMutation(success=False, message="Username already registered")
+        # Validate if phone or national id already exists
+        if CustomUser.objects.filter(phone_number=input.phone_number).exists():
+            return RegistrationMutation(success=False, message="Phone number already registered")
+        if CustomUser.objects.filter(national_id=input.national_id).exists():
+            return RegistrationMutation(success=False, message="National ID already registered")
+
+        # Create user without password (OTP login)
+        user = CustomUser(
+            username=input.username,  # or generate a unique username
+            phone_number=input.phone_number,
+            national_id=input.national_id,
+        )
+        user.set_unusable_password()  # no password, only OTP login
+        user.save()
+
+        return RegistrationMutation(
+            user=user,
+            success=True,
+            message="User registered successfully"
+        )
 
 
 
