@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /home/rooben/Desktop/samia-backend/ecommerce/reuben
+set -gx VIRTUAL_ENV /home/rooben/Desktop/samia/samia-backend/ecommerce/reuben
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

@@ -88,6 +88,19 @@ DATABASES = {
 }
 
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'Mkopo',
+#         'USER': 'postgres',             # Use existing PostgreSQL user
+#         'PASSWORD': '12345', # Replace with actual password
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
+
+AUTH_USER_MODEL = 'myapp.CustomUser'
+
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
@@ -156,6 +169,8 @@ GRAPHENE = {
     ],
 }
 
+
+
 import datetime
 
 
@@ -182,20 +197,25 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:5173",
     "http://127.0.0.1:42217",
     "http://localhost:4200",  # Angular frontend (default port)
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    # add others if needed
+]
+
+
+
 CORS_ALLOW_CREDENTIALS = True
 
-from dotenv import load_dotenv # type: ignore
-load_dotenv()
 
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
-BEEM_API_KEY = os.getenv('BEEM_API_KEY')
-BEEM_SECRET_KEY = os.getenv('BEEM_SECRET_KEY')
-BEEM_APP_ID = os.getenv('BEEM_APP_ID')
-BEEM_SENDER_ID = os.getenv('BEEM_SENDER_ID')  # optional
-
-AUTH_USER_MODEL = 'myapp.CustomUser'
+BEEM_API_KEY = os.getenv("BEEM_API_KEY")
+BEEM_SECRET_KEY = os.getenv("BEEM_SECRET_KEY")
+BEEM_APP_ID = os.getenv("BEEM_APP_ID")
