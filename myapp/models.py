@@ -53,7 +53,7 @@ class CustomUser(AbstractUser):
 class LoanApplication(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
-        ('approved', 'Approved'),
+        ('accepted', 'Accepted'),
         ('rejected', 'Rejected'),
     ]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='loan_applications')

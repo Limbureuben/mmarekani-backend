@@ -92,3 +92,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ['id', 'sender', 'sender_username', 'receiver', 'receiver_username', 'message', 'created_at', 'is_read']
         read_only_fields = ['id', 'created_at', 'sender_username', 'receiver_username']
+
+
+class LoanStatusUpdateSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=['approved', 'rejected'])
