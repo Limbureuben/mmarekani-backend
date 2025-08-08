@@ -17,3 +17,10 @@ class LoanApplicationAdmin(admin.ModelAdmin):
     list_filter = ('status', 'submitted_at')
     search_fields = ('user__username', 'user__phone')
 admin.site.register(LoanApplication, LoanApplicationAdmin)
+
+
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'sender', 'receiver', 'message', 'created_at', 'is_read')
+    list_filter = ('is_read', 'created_at')
+    search_fields = ('sender__username', 'receiver__username', 'message')
+admin.site.register(Notification, NotificationAdmin)

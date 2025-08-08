@@ -1,151 +1,3 @@
-# from django.shortcuts import render
-# import graphene
-# from commerce_dto.commerce import *
-# from commerce_dto.Response import *
-# from graphene_django import DjangoObjectType
-# from django.contrib.auth.models import User
-# from django.contrib.auth import authenticate
-# from rest_framework_simplejwt.tokens import RefreshToken
-# from django.core.exceptions import ValidationError
-# from commerceBuilders.commerceBuilder import UserBuilder
-# import requests
-# from django.conf import settings
-# from .models import CustomUser
-# from graphene import Mutation, String, Boolean, Field
-# import base64
-
-
-# class LoginUser(graphene.Mutation):
-#     class Arguments:
-#         username = graphene.String(required=True)
-#         password = graphene.String(required=True)
-
-#     user = graphene.Field(UserLoginObject)
-#     success = graphene.Boolean()
-#     message = graphene.String()
-
-#     def mutate(self, info, username, password):
-#         try:
-#             user = authenticate(username=username, password=password)
-
-#             if user is None:
-#                 return LoginUser(success=False, message="Invalid credentials")
-            
-#             if not isinstance(user, CustomUser):
-#                 raise ValidationError("User is not a valid CustomUser instance.")
-
-#             # Create JWT token
-#             refresh = RefreshToken.for_user(user)
-#             access_token = str(refresh.access_token)
-
-#             user_data = UserLoginObject(
-#                 id=user.id,
-#                 username=user.username,
-#                 token=access_token,
-#                 isStaff=user.is_staff,
-#             )
-
-#             return LoginUser(
-#                 user=user_data,
-#                 success=True,
-#             )
-
-#         except Exception as e:
-#             return LoginUser(success=False, message=f"An error occurred: {str(e)}")
-
-
-
-
-# class RegistrationMutation(graphene.Mutation):
-#     user = graphene.Field(RegistrationResponse)
-#     success = graphene.Boolean()
-#     message = graphene.String()
-
-#     class Arguments:
-#         input = RegistrationInputObject(required=True)
-
-#     def mutate(self, info, input):
-#         if CustomUser.objects.filter(username=input.username).exists():
-#             return RegistrationMutation(success=False, message="Username already registered")
-#         # Validate if phone or national id already exists
-#         if CustomUser.objects.filter(phone=input.phone).exists():
-#             return RegistrationMutation(success=False, message="Phone number already registered")
-#         if CustomUser.objects.filter(national_id=input.national_id).exists():
-#             return RegistrationMutation(success=False, message="National ID already registered")
-
-#         # Create user without password (OTP login)
-#         user = CustomUser(
-#             username=input.username,  # or generate a unique username
-#             phone=input.phone,
-#             national_id=input.national_id,
-#         )
-#         user.set_unusable_password()  # no password, only OTP login
-#         user.save()
-
-#         return RegistrationMutation(
-#             user=user,
-#             success=True,
-#             message="User registered successfully"
-#         )
-
-
-
-# class OTPLoginMutation(Mutation):
-#     user = Field(UserLoginObject)
-#     success = Boolean()
-#     message = String()
-
-#     class Arguments:
-#         phone = String(required=True)
-#         pin_id = String(required=True)
-#         pin = String(required=True)
-
-#     def mutate(self, info, phone, pin_id, pin):
-#         try:
-#             # Verify OTP with Beem
-#             credentials = f"{settings.BEEM_APP_KEY}:{settings.BEEM_SECRET_KEY}"
-#             encoded_credentials = base64.b64encode(credentials.encode()).decode()
-
-#             headers = {
-#                 "Content-Type": "application/json",
-#                 "Authorization": f"Basic {encoded_credentials}",
-#             }
-
-#             payload = {"pinId": pin_id, "pin": pin}
-#             res = requests.post("https://gateway.beem.africa/v1/otp/verify", json=payload, headers=headers)
-
-#             if res.status_code != 200 or not res.json().get("valid"):
-#                 return OTPLoginMutation(success=False, message="Invalid OTP or verification failed.")
-
-#             # Lookup user
-#             try:
-#                 user = CustomUser.objects.get(phone=phone)
-#             except CustomUser.DoesNotExist:
-#                 return OTPLoginMutation(success=False, message="User not found. Please register.")
-
-#             # Generate token
-#             refresh = RefreshToken.for_user(user)
-#             access_token = str(refresh.access_token)
-
-#             user_data = UserLoginObject(
-#                 id=user.id,
-#                 username=user.username,
-#                 token=access_token,
-#                 isStaff=user.is_staff,
-#             )
-
-#             return OTPLoginMutation(user=user_data, success=True, message="Login successful")
-
-#         except Exception as e:
-#             return OTPLoginMutation(success=False, message=f"Error: {str(e)}")
-
-
-
-
-
-
-
-
 import random
 from rest_framework.views import APIView # type: ignore
 from rest_framework.response import Response # type: ignore
@@ -159,6 +11,7 @@ import base64
 import requests
 from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db.models import Sum
 
 class RegisterUserView(APIView):
     def post(self, request):
@@ -167,7 +20,6 @@ class RegisterUserView(APIView):
             serializer.save()
             return Response({'message': 'Registered successfully, proceed to login'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 class LoginWithPhoneView(APIView):
@@ -212,16 +64,6 @@ class LoanApplicationCreateView(APIView):
 
 
 
-# class UserLoanApplicationsAPIView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         loans = LoanApplication.objects.filter(user=user).order_by('-submitted_at')
-#         serializer = LoanApplicationSerializer(loans, many=True)
-#         return Response(serializer.data)
-
-
 class AdminLoanApplicationsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -241,27 +83,96 @@ class UserLoanApplicationsView(APIView):
 
 
 
-# class LoanApplicationListAPIView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]
+class UserProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
-#     def get(self, request):
-#         # Get all loan applications for the logged-in user
-#         applications = LoanApplication.objects.filter(user=request.user)
-#         serializer = LoanSerializer(applications, many=True)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
+    def get(self, request):
+        user = request.user
+
+        print(f"Request User: {user} (id: {user.id})")
+
+        user_loans = LoanApplication.objects.filter(user=user)
+
+        print(f"Loans found: {user_loans.count()}")
+
+        total_applications = user_loans.count()
+        total_approved = user_loans.filter(status='approved').count()
+        total_rejected = user_loans.filter(status='rejected').count()
+
+        money_approved = user_loans.filter(status='approved').aggregate(total=Sum('loan_amount'))['total'] or 0
+        money_pending = user_loans.filter(status='pending').aggregate(total=Sum('loan_amount'))['total'] or 0
+        money_rejected = user_loans.filter(status='rejected').aggregate(total=Sum('loan_amount'))['total'] or 0
+
+        profile_data = {
+            "username": user.username,
+            "phone": user.phone,
+            "national_id": user.national_id,
+            "total_applications": total_applications,
+            "total_approved": total_approved,
+            "total_rejected": total_rejected,
+            "money_approved": money_approved,
+            "money_pending": money_pending,
+            "money_rejected": money_rejected,
+        }
+
+        print("Profile data to return:", profile_data)
+
+        serializer = UserProfileStatsSerializer(profile_data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+User = get_user_model()
+class NotificationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request):
+        user = request.user
+        if user.is_staff:
+            # Admin can see all notifications
+            notifications = Notification.objects.all().order_by('created_at')
+        else:
+            # User sees only messages sent or received by them (mostly their own sent messages and replies by admin)
+            notifications = Notification.objects.filter(sender=user) | Notification.objects.filter(receiver=user)
+            notifications = notifications.order_by('created_at')
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data)
 
+    def post(self, request):
+        user = request.user
+        data = request.data
 
+        # Validate message content
+        message = data.get('message', '').strip()
+        if not message:
+            return Response({"detail": "Message cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Admin sending a message (must specify receiver user id)
+        if user.is_staff:
+            receiver_id = data.get('receiver')
+            if not receiver_id:
+                return Response({"detail": "Receiver is required for admin messages."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                receiver = User.objects.get(id=receiver_id, is_staff=False)  # Receiver must be a normal user
+            except User.DoesNotExist:
+                return Response({"detail": "Receiver user not found or is not a regular user."}, status=status.HTTP_400_BAD_REQUEST)
+            # Create message from admin to user
+            notification = Notification.objects.create(sender=user, receiver=receiver, message=message)
+            serializer = NotificationSerializer(notification)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+        else:
+            # User sending a message (receiver is always admin)
+            try:
+                admin_user = User.objects.filter(is_staff=True).first()
+            except User.DoesNotExist:
+                return Response({"detail": "Admin user not found."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            if not admin_user:
+                return Response({"detail": "No admin available to receive messages."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-
-
-
-
+            # Create message from user to admin
+            notification = Notification.objects.create(sender=user, receiver=admin_user, message=message)
+            serializer = NotificationSerializer(notification)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 

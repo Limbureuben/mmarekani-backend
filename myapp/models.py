@@ -50,6 +50,35 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.phone
 
+class LoanApplication(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='loan_applications')
+    loan_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    passport_picture = models.ImageField(upload_to='loan_documents/passport_pictures/')
+    nida_front = models.ImageField(upload_to='loan_documents/nida_pictures/front/', null=True, blank=True)
+    nida_back = models.ImageField(upload_to='loan_documents/nida_pictures/back/', null=True, blank=True)
+    submitted_at = models.DateTimeField(default=timezone.now)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    def __str__(self):
+        return f"Loan Application by {self.user.username} for {self.loan_amount}"
+
+
+class Notification(models.Model):
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_notifications')
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_notifications')
+    message = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+    is_read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'Notification from {self.sender} to {self.receiver} at {self.created_at}'
+
+
 
 class OTP(models.Model):
     phone = models.CharField(max_length=20)
@@ -58,17 +87,3 @@ class OTP(models.Model):
 
     def __str__(self):
         return f"{self.phone} - {self.code}"
-
-
-
-class LoanApplication(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='loan_applications')
-    loan_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    passport_picture = models.ImageField(upload_to='loan_documents/passport_pictures/')
-    nida_front = models.ImageField(upload_to='loan_documents/nida_pictures/front/', null=True, blank=True)
-    nida_back = models.ImageField(upload_to='loan_documents/nida_pictures/back/', null=True, blank=True)
-    submitted_at = models.DateTimeField(default=timezone.now)
-    status = models.CharField(max_length=20, default='pending')  # pending, approved, rejected
-
-    def __str__(self):
-        return f"Loan Application by {self.user.username} for {self.loan_amount}"
