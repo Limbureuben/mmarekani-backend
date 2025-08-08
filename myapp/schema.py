@@ -7,9 +7,9 @@ class Query(graphene.ObjectType):
     def resolve_hello(self, info):
         return "Hello world!"
 
-class Mutation(graphene.ObjectType):
-    register_user = RegistrationMutation.Field()
-    login_user = LoginUser.Field()
-    login_custmer = OTPLoginMutation.Field()
+# class Mutation(graphene.ObjectType):
+#     register_user = RegistrationMutation.Field()
+#     login_user = LoginUser.Field()
+#     login_custmer = OTPLoginMutation.Field()
 
-schema = graphene.Schema(query=Query, mutation=Mutation)
+# schema = graphene.Schema(query=Query, mutation=Mutation)

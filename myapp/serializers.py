@@ -1,5 +1,6 @@
 from rest_framework import serializers # type: ignore
 from .models import *
+from django.contrib.auth import get_user_model
 
 # class RegisterUserSerializer(serializers.ModelSerializer):
 #     class Meta:
@@ -42,5 +43,43 @@ class OTPVerifySerializer(serializers.Serializer):
 class LoanApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoanApplication
-        fields = ['id', 'loan_amount', 'passport_picture', 'nida_picture', 'submitted_at', 'status']
-        read_only_fields = ['submitted_at', 'status']
+        fields = ['loan_amount', 'passport_picture', 'nida_front', 'nida_back']
+
+    def create(self, validated_data):
+        # Attach the logged-in user automatically
+        request = self.context.get('request')
+        user = request.user if request else None
+        return LoanApplication.objects.create(user=user, **validated_data)
+
+class UserSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ['username', 'phone', 'national_id']
+
+class LoanApplicationSerializer(serializers.ModelSerializer):
+    user = UserSummarySerializer(read_only=True)
+
+    class Meta:
+        model = LoanApplication
+        fields = [
+            'id',
+            'user',
+            'loan_amount',
+            'passport_picture',
+            'nida_front',
+            'nida_back',
+            'submitted_at',
+            'status',
+        ]
+        
+        
+# class LoanSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = LoanApplication
+#         fields = ['id', 'loan_amount', 'passport_picture', 'nida_front', 'nida_back', 'submitted_at', 'status']
+
+
+# class LoanApplicationSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = LoanApplication
+#         fields = '__all__'  # Or list specific fields you want to return

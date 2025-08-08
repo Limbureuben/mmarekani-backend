@@ -65,7 +65,8 @@ class LoanApplication(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='loan_applications')
     loan_amount = models.DecimalField(max_digits=10, decimal_places=2)
     passport_picture = models.ImageField(upload_to='loan_documents/passport_pictures/')
-    nida_picture = models.ImageField(upload_to='loan_documents/nida_pictures/')
+    nida_front = models.ImageField(upload_to='loan_documents/nida_pictures/front/', null=True, blank=True)
+    nida_back = models.ImageField(upload_to='loan_documents/nida_pictures/back/', null=True, blank=True)
     submitted_at = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, default='pending')  # pending, approved, rejected
 

@@ -149,9 +149,9 @@
 import random
 from rest_framework.views import APIView # type: ignore
 from rest_framework.response import Response # type: ignore
-from rest_framework import status # type: ignore
+from rest_framework import status, permissions # type: ignore
 from .models import CustomUser, OTP
-from .serializers import RegisterUserSerializer, PhoneSerializer, OTPVerifySerializer
+from .serializers import *
 from django.utils import timezone
 from datetime import timedelta
 from .beem_otp import send_otp_via_beem
@@ -197,6 +197,78 @@ class LoginWithPhoneView(APIView):
                 'phone': user.phone,
             }
         }, status=status.HTTP_200_OK)
+
+
+
+class LoanApplicationCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, format=None):
+        serializer = LoanApplicationSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save(user=request.user)  # No need to pass user here
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# class UserLoanApplicationsAPIView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         loans = LoanApplication.objects.filter(user=user).order_by('-submitted_at')
+#         serializer = LoanApplicationSerializer(loans, many=True)
+#         return Response(serializer.data)
+
+
+class AdminLoanApplicationsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        loan_apps = LoanApplication.objects.all().order_by('-submitted_at')
+        serializer = LoanApplicationSerializer(loan_apps, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+# User view - only user's own loan applications
+class UserLoanApplicationsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        loan_apps = LoanApplication.objects.filter(user=request.user, status='pending').order_by('-submitted_at')
+        serializer = LoanApplicationSerializer(loan_apps, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+# class LoanApplicationListAPIView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get(self, request):
+#         # Get all loan applications for the logged-in user
+#         applications = LoanApplication.objects.filter(user=request.user)
+#         serializer = LoanSerializer(applications, many=True)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
