@@ -74,6 +74,9 @@ class Notification(models.Model):
     message = models.TextField()
     created_at = models.DateTimeField(default=timezone.now)
     is_read = models.BooleanField(default=False)
+    
+    sender_deleted = models.BooleanField(default=False)
+    receiver_deleted = models.BooleanField(default=False)
 
     def __str__(self):
         return f'Notification from {self.sender} to {self.receiver} at {self.created_at}'

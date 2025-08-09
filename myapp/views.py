@@ -7,6 +7,7 @@ from .serializers import *
 from django.utils import timezone
 from datetime import timedelta
 from .beem_otp import send_otp_via_beem
+from django.db.models import Q
 import base64
 import requests
 from django.conf import settings
@@ -133,74 +134,142 @@ class UserProfileView(APIView):
 User = get_user_model()
 class NotificationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    
+    def _get_queryset(self, user):
+        if user.is_staff:
+            # Admin sees notifications not marked deleted on receiver side
+            return Notification.objects.filter(receiver_deleted=False).order_by('created_at')
+        else:
+            # Users see only notifications not deleted on their side
+            return Notification.objects.filter(
+                (Q(sender=user) & Q(sender_deleted=False)) |
+                (Q(receiver=user) & Q(receiver_deleted=False))
+            ).order_by('created_at')
 
+    # def get(self, request):
+    #     user = request.user
+    #     if user.is_staff:
+    #         # Admin can see all notifications
+    #         notifications = Notification.objects.all().order_by('created_at')
+    #     else:
+    #         # User sees only messages sent or received by them (mostly their own sent messages and replies by admin)
+    #         notifications = Notification.objects.filter(sender=user) | Notification.objects.filter(receiver=user)
+    #         notifications = notifications.order_by('created_at')
+    #     serializer = NotificationSerializer(notifications, many=True)
+    #     return Response(serializer.data)
+    
+    
     def get(self, request):
         user = request.user
-        if user.is_staff:
-            # Admin can see all notifications
-            notifications = Notification.objects.all().order_by('created_at')
-        else:
-            # User sees only messages sent or received by them (mostly their own sent messages and replies by admin)
-            notifications = Notification.objects.filter(sender=user) | Notification.objects.filter(receiver=user)
-            notifications = notifications.order_by('created_at')
+        notifications = self._get_queryset(user)
         serializer = NotificationSerializer(notifications, many=True)
         return Response(serializer.data)
-
+    
+    
     def post(self, request):
         user = request.user
         data = request.data
 
-        # Validate message content
         message = data.get('message', '').strip()
         if not message:
             return Response({"detail": "Message cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Admin sending a message (must specify receiver user id)
         if user.is_staff:
             receiver_id = data.get('receiver')
             if not receiver_id:
                 return Response({"detail": "Receiver is required for admin messages."}, status=status.HTTP_400_BAD_REQUEST)
             try:
-                receiver = User.objects.get(id=receiver_id, is_staff=False)  # Receiver must be a normal user
+                receiver = User.objects.get(id=receiver_id, is_staff=False)
             except User.DoesNotExist:
                 return Response({"detail": "Receiver user not found or is not a regular user."}, status=status.HTTP_400_BAD_REQUEST)
-            # Create message from admin to user
             notification = Notification.objects.create(sender=user, receiver=receiver, message=message)
             serializer = NotificationSerializer(notification)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
         else:
-            # User sending a message (receiver is always admin)
-            try:
-                admin_user = User.objects.filter(is_staff=True).first()
-            except User.DoesNotExist:
-                return Response({"detail": "Admin user not found."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            admin_user = User.objects.filter(is_staff=True).first()
             if not admin_user:
                 return Response({"detail": "No admin available to receive messages."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-            # Create message from user to admin
             notification = Notification.objects.create(sender=user, receiver=admin_user, message=message)
             serializer = NotificationSerializer(notification)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def delete(self, request, pk):
+        user = request.user
+        notification = get_object_or_404(Notification, pk=pk)
+
+        # Only sender or receiver or admin can soft delete the notification on their side
+        if notification.sender != user and notification.receiver != user and not user.is_staff:
+            return Response({"detail": "You do not have permission to delete this notification."},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        # Mark deletion flag for the user or both if admin
+        if notification.sender == user:
+            notification.sender_deleted = True
+        elif notification.receiver == user:
+            notification.receiver_deleted = True
+        elif user.is_staff:
+            # Optionally, admin can delete both sides at once
+            notification.sender_deleted = True
+            notification.receiver_deleted = True
+
+        notification.save()
+
+        # If both sides deleted, remove record permanently
+        if notification.sender_deleted and notification.receiver_deleted:
+            notification.delete()
+
+        return Response({"detail": "Notification deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
+    # def post(self, request):
+    #     user = request.user
+    #     data = request.data
 
-# class LoanApplicationStatusUpdateView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]  # Only admin can access
+    #     # Validate message content
+    #     message = data.get('message', '').strip()
+    #     if not message:
+    #         return Response({"detail": "Message cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
 
-#     def patch(self, request, pk):
-#         # pk is the LoanApplication id
-#         loan = get_object_or_404(LoanApplication, pk=pk)
+    #     # Admin sending a message (must specify receiver user id)
+    #     if user.is_staff:
+    #         receiver_id = data.get('receiver')
+    #         if not receiver_id:
+    #             return Response({"detail": "Receiver is required for admin messages."}, status=status.HTTP_400_BAD_REQUEST)
+    #         try:
+    #             receiver = User.objects.get(id=receiver_id, is_staff=False)  # Receiver must be a normal user
+    #         except User.DoesNotExist:
+    #             return Response({"detail": "Receiver user not found or is not a regular user."}, status=status.HTTP_400_BAD_REQUEST)
+    #         # Create message from admin to user
+    #         notification = Notification.objects.create(sender=user, receiver=receiver, message=message)
+    #         serializer = NotificationSerializer(notification)
+    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-#         serializer = LoanStatusUpdateSerializer(data=request.data)
-#         if serializer.is_valid():
-#             loan.status = serializer.validated_data['status']
-#             loan.save()
-#             return Response({"detail": f"Loan application status updated to {loan.status}."}, status=status.HTTP_200_OK)
-#         else:
-#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    #     else:
+    #         # User sending a message (receiver is always admin)
+    #         try:
+    #             admin_user = User.objects.filter(is_staff=True).first()
+    #         except User.DoesNotExist:
+    #             return Response({"detail": "Admin user not found."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    #         if not admin_user:
+    #             return Response({"detail": "No admin available to receive messages."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    #         # Create message from user to admin
+    #         notification = Notification.objects.create(sender=user, receiver=admin_user, message=message)
+    #         serializer = NotificationSerializer(notification)
+    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        
+    def delete(self, request, pk):
+        user = request.user
+        notification = get_object_or_404(Notification, pk=pk)
+
+        # Allow deletion only if the user is sender OR admin (if you want admins to delete any)
+        if notification.sender != user and not user.is_staff:
+            return Response({"detail": "You do not have permission to delete this notification."},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        notification.delete()
+        return Response({"detail": "Notification deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
 class LoanApplicationStatusUpdateView(APIView):
@@ -223,16 +292,6 @@ class LoanApplicationStatusUpdateView(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-
-
-# class LoanApplicationDeleteView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]  # Only admins allowed
-
-#     def delete(self, request, pk):
-#         loan = get_object_or_404(LoanApplication, pk=pk)
-#         loan.delete()
-#         return Response({"detail": "Loan application deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
 class LoanApplicationDeleteView(APIView):

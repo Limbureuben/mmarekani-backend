@@ -9,6 +9,7 @@ urlpatterns = [
     path('user/loan-applications/', UserLoanApplicationsView.as_view(), name='user-loan-applications'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
     path('notifications/', NotificationView.as_view(), name='notifications'),
+    path('notifications/<int:pk>/', NotificationView.as_view(), name='notification-detail'),
     path('loan-applications/<int:pk>/status/', LoanApplicationStatusUpdateView.as_view(), name='loan-application-status-update'),
     path('admin/loan-applications/<int:pk>/status/', LoanApplicationStatusUpdateView.as_view(), name='loan-status-update'),
     path('admin/loan-applications/<int:pk>/delete/', LoanApplicationDeleteView.as_view(), name='loan-application-delete'),
