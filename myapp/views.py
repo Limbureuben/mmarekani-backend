@@ -74,14 +74,22 @@ class AdminLoanApplicationsView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 # User view - only user's own loan applications
+# class UserLoanApplicationsView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get(self, request):
+#         loan_apps = LoanApplication.objects.filter(user=request.user, status='pending').order_by('-submitted_at')
+#         serializer = LoanApplicationSerializer(loan_apps, many=True)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class UserLoanApplicationsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        loan_apps = LoanApplication.objects.filter(user=request.user, status='pending').order_by('-submitted_at')
+        loan_apps = LoanApplication.objects.filter(user=request.user).order_by('-submitted_at')
         serializer = LoanApplicationSerializer(loan_apps, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 
 class UserProfileView(APIView):
