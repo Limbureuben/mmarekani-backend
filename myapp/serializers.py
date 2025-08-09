@@ -95,4 +95,4 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 class LoanStatusUpdateSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=['approved', 'rejected'])
+    status = serializers.ChoiceField(choices=['accepted', 'rejected'])

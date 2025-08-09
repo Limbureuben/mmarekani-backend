@@ -10,7 +10,7 @@ from .beem_otp import send_otp_via_beem
 import base64
 import requests
 from django.conf import settings
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 
@@ -186,20 +186,53 @@ class NotificationView(APIView):
 
 
 
+# class LoanApplicationStatusUpdateView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]  # Only admin can access
+
+#     def patch(self, request, pk):
+#         # pk is the LoanApplication id
+#         loan = get_object_or_404(LoanApplication, pk=pk)
+
+#         serializer = LoanStatusUpdateSerializer(data=request.data)
+#         if serializer.is_valid():
+#             loan.status = serializer.validated_data['status']
+#             loan.save()
+#             return Response({"detail": f"Loan application status updated to {loan.status}."}, status=status.HTTP_200_OK)
+#         else:
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 class LoanApplicationStatusUpdateView(APIView):
-    permission_classes = [permissions.IsAdminUser]  # Only admin can access
+    permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, pk):
-        # pk is the LoanApplication id
-        loan = get_object_or_404(LoanApplication, pk=pk)
+        # Only allow admin users
+        if not request.user.is_staff:
+            return Response({"detail": "You do not have permission to perform this action."},
+                            status=status.HTTP_403_FORBIDDEN)
 
+        loan = get_object_or_404(LoanApplication, pk=pk)
         serializer = LoanStatusUpdateSerializer(data=request.data)
         if serializer.is_valid():
             loan.status = serializer.validated_data['status']
             loan.save()
-            return Response({"detail": f"Loan application status updated to {loan.status}."}, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": f"Loan application status updated to {loan.status}."},
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+# class LoanApplicationDeleteView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]  # Only admins allowed
+
+#     def delete(self, request, pk):
+#         loan = get_object_or_404(LoanApplication, pk=pk)
+#         loan.delete()
+#         return Response({"detail": "Loan application deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
 class LoanApplicationDeleteView(APIView):
@@ -209,6 +242,54 @@ class LoanApplicationDeleteView(APIView):
         loan = get_object_or_404(LoanApplication, pk=pk)
         loan.delete()
         return Response({"detail": "Loan application deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+
+class LoanApplicationStatsView(APIView):
+    permission_classes = [permissions.IsAdminUser]  # Only admins can access
+
+    def get(self, request):
+        total = LoanApplication.objects.count()
+        total_accepted = LoanApplication.objects.filter(status='accepted').count()
+        total_pending = LoanApplication.objects.filter(status='pending').count()
+        total_rejected = LoanApplication.objects.filter(status='rejected').count()
+
+        data = {
+            "total_applications": total,
+            "total_accepted": total_accepted,
+            "total_pending": total_pending,
+            "total_rejected": total_rejected,
+        }
+        return Response(data)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

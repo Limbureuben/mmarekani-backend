@@ -50,11 +50,14 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
+
 
 ROOT_URLCONF = 'ecommerce.urls'
 
@@ -161,6 +164,17 @@ REST_FRAMEWORK = {
     ),
 }
 
+
+# REST_FRAMEWORK = {
+#     "DEFAULT_AUTHENTICATION_CLASSES": (
+#         "rest_framework_simplejwt.authentication.JWTAuthentication",
+#     ),
+#     "DEFAULT_PERMISSION_CLASSES": (
+#         "rest_framework.permissions.IsAuthenticated",
+#     ),
+# }
+
+
 GRAPHENE = {
     'SCHEMA': 'myapp.schema.schema',
     'GRAPHIQL': True,
@@ -212,10 +226,10 @@ CSRF_TRUSTED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 
-import os
-from dotenv import load_dotenv
-load_dotenv()
+# import os
+# from dotenv import load_dotenv
+# load_dotenv()
 
-BEEM_API_KEY = os.getenv("BEEM_API_KEY")
-BEEM_SECRET_KEY = os.getenv("BEEM_SECRET_KEY")
-BEEM_APP_ID = os.getenv("BEEM_APP_ID")
+# BEEM_API_KEY = os.getenv("BEEM_API_KEY")
+# BEEM_SECRET_KEY = os.getenv("BEEM_SECRET_KEY")
+# BEEM_APP_ID = os.getenv("BEEM_APP_ID")
