@@ -106,10 +106,10 @@ class UserProfileView(APIView):
         print(f"Loans found: {user_loans.count()}")
 
         total_applications = user_loans.count()
-        total_approved = user_loans.filter(status='approved').count()
+        total_approved = user_loans.filter(status='accepted').count()
         total_rejected = user_loans.filter(status='rejected').count()
 
-        money_approved = user_loans.filter(status='approved').aggregate(total=Sum('loan_amount'))['total'] or 0
+        money_approved = user_loans.filter(status='accepted').aggregate(total=Sum('loan_amount'))['total'] or 0
         money_pending = user_loans.filter(status='pending').aggregate(total=Sum('loan_amount'))['total'] or 0
         money_rejected = user_loans.filter(status='rejected').aggregate(total=Sum('loan_amount'))['total'] or 0
 
@@ -124,7 +124,6 @@ class UserProfileView(APIView):
             "money_pending": money_pending,
             "money_rejected": money_rejected,
         }
-
         print("Profile data to return:", profile_data)
 
         serializer = UserProfileStatsSerializer(profile_data)
@@ -322,25 +321,85 @@ class LoanApplicationStatsView(APIView):
 
 
 
+# class LoanReceiptUploadView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def post(self, request, pk):
+#         loan_application = get_object_or_404(LoanApplication, pk=pk, user=request.user)
+
+#         data = request.data.copy()
+#         data['loan_application'] = loan_application.id
+#         # Set username and phone_number from logged-in user info
+#         data['username'] = request.user.username
+        
+#         # Assuming phone number is stored in user profile or user model field called 'phone_number'
+#         phone_number = getattr(request.user, 'phone_number', None)
+#         if not phone_number:
+#             return Response({'error': 'User phone number not found'}, status=status.HTTP_400_BAD_REQUEST)
+#         data['phone_number'] = phone_number
+
+#         serializer = LoanReceiptSerializer(data=data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({'message': 'Receipt uploaded successfully'}, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LoanReceiptUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        data = request.data.copy()
+        data['username'] = request.user.username
+        phone = getattr(request.user, 'phone', None)
+        if not phone:
+            return Response({'error': 'User phone number not found'}, status=status.HTTP_400_BAD_REQUEST)
+        data['phone'] = phone
+        
+        serializer = LoanReceiptSerializer(data=data)
+        if serializer.is_valid():
+            receipt = serializer.save()
+            receipt_url = request.build_absolute_uri(receipt.receipt_image.url)  # Full URL
+            
+            return Response({
+                'message': 'Receipt uploaded successfully',
+                'receipt_url': receipt_url
+            }, status=status.HTTP_201_CREATED)
+        
+        # Return serializer errors for debugging
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
+class DeleteAccountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+        user.delete()
+        return Response({"message": "Account deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
 
+class LoanReceiptListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]  # Require token
+
+    def get(self, request):
+        receipts = LoanReceipt.objects.all().order_by('-uploaded_at')
+        serializer = LoanReceiptSerializer(receipts, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class LoanReceiptDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
-
-
-
-
-
-
-
-
-
-
+    def delete(self, request, pk):
+        try:
+            receipt = LoanReceipt.objects.get(pk=pk)
+            receipt.delete()
+            return Response({"message": "Receipt deleted"}, status=status.HTTP_204_NO_CONTENT)
+        except LoanReceipt.DoesNotExist:
+            return Response({"error": "Receipt not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 

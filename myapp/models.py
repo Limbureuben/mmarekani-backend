@@ -83,6 +83,12 @@ class Notification(models.Model):
 
 
 
+class LoanReceipt(models.Model):
+    receipt_image = models.ImageField(upload_to='loan_documents/receipts/')
+    uploaded_at = models.DateTimeField(default=timezone.now)
+    username = models.CharField(max_length=150)
+    phone = models.CharField(max_length=20)
+
 class OTP(models.Model):
     phone = models.CharField(max_length=20)
     code = models.CharField(max_length=6)

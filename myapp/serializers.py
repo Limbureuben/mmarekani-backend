@@ -96,3 +96,9 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class LoanStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=['accepted', 'rejected'])
+
+
+class LoanReceiptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LoanReceipt
+        fields = ['id', 'receipt_image', 'uploaded_at', 'username', 'phone']

@@ -19,6 +19,12 @@ class LoanApplicationAdmin(admin.ModelAdmin):
 admin.site.register(LoanApplication, LoanApplicationAdmin)
 
 
+class LoanReceiptAdmin(admin.ModelAdmin):
+    list_display = ('receipt_image', 'username', 'phone', 'uploaded_at')
+    list_filter = ('uploaded_at',)
+    search_fields = ('username', 'phone')
+admin.site.register(LoanReceipt, LoanReceiptAdmin)
+
 class NotificationAdmin(admin.ModelAdmin):
     list_display = ('id', 'sender', 'receiver', 'message', 'created_at', 'is_read')
     list_filter = ('is_read', 'created_at')
